@@ -41,21 +41,33 @@ class Core(commands.Cog):
     ######
 
     #help
-
     @discord.app_commands.command(name="help", description="Mostra os comandos de Apelogs.")
     async def slash_help(self, interaction: discord.Interaction):
         await interaction.response.defer(thinking=True)
-
-        embed = discord.Embed(title="📚 Comandos do Apelogs", color=discord.Color.random())
-        embed.add_field(name="/ping", value="Verifica se o bot está online e mostra a latência.", inline=False)
-        embed.add_field(name="/help", value="Mostra essa mensagem de ajuda.", inline=False)
+        embed = discord.Embed(
+            title="📚 Comandos do Apelogs",
+            description="Aqui estão todos os comandos disponíveis:",
+            color=discord.Color.blurple()
+        )
+        
+        # 🛠 Utilidades
         embed.add_field(
-            name="Animais",
+            name="🛠 Utilidades",
             value=(
-                "**:bird: | !bird**: Envia um gif aleatório de um pássaro.\n"
-                "**:cat: | !cat**: Envia um gif aleatório de um gato.\n"
-                "**:dog: | !dog**: Envia um gif aleatório de um cachorro.\n"
-                "**:panda: | !panda**: Envia um gif aleatório de um panda."
+                "`/ping` - Mostra a latência do bot.\n"
+                "`/help` - Mostra esta mensagem de ajuda.\n"
+                "`/tempo <cidade>` – Mostra o clima atual de uma cidade.\n"
+                "`/filme <nome>` – Mostra informações de um filme/série"
+            ),
+            inline=False
+        )
+
+        # 🐾 Animais
+        embed.add_field(
+            name="🐾 Animais",
+            value=(
+                "`/cat` – Envia uma imagem de um gato aleatório.\n"
+                "`/dog`, `/fox`, `/panda`, `/redpanda`, `/guaxinim`, `/coala`, `/canguru`, `/baleia`, `/bird` – Outros comandos de animais fofos."
             ),
             inline=False
         )

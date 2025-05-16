@@ -59,7 +59,7 @@ class Core(commands.Cog):
             ),
             inline=False
         )
-
+ 
         await interaction.followup.send(embed=embed) 
 
 async def setup(client):

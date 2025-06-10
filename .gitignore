@@ -4,3 +4,4 @@ config/__pycache__/
 apelog.log
 \data/
 \.venv/
+__pycache__/

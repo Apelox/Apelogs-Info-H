@@ -1,7 +1,6 @@
 from discord.ext import commands
 from config.settings import API_WEATHER, API_FILME
-import discord
-import requests
+import discord, requests
 
 
 class Utilidades(commands.Cog):
@@ -9,7 +8,6 @@ class Utilidades(commands.Cog):
         self.client = client
      
      
-    
     #clima    
     @discord.app_commands.command(name="clima", description="Mostra a previsão do tempo de uma cidade.")
     @discord.app_commands.describe(cidade="Nome da cidade para consultar o clima")
@@ -89,9 +87,44 @@ class Utilidades(commands.Cog):
             print(e) 
             await interaction.followup.send("Houve um erro ao tentar obter o filme. Tente novamente mais tarde.")
         
+    #receita
+    @discord.app_commands.command(name="receita", description="Busca uma receita aleatória ou específica.")
+    @discord.app_commands.describe(prato="Nome do prato que você quer buscar (opcional)")
+    async def slash_receita(self, interaction: discord.Interaction, prato: str = None):
+        await interaction.response.defer(thinking=True)
+        try:
+            if prato:
+                url = f"https://www.themealdb.com/api/json/v1/1/search.php?s={prato}"
+            else:
+                url = "https://www.themealdb.com/api/json/v1/1/random.php"
+
+            response = requests.get(url).json()
+            meal = response['meals'][0]
+
+            titulo = meal['strMeal']
+            instrucoes = meal['strInstructions']
+            imagem = meal['strMealThumb']
         
-        
-        
+            ingredientes = ""
+            for i in range(1, 69):
+                ingrediente = meal[f'strIngredient{i}']
+                medida = meal[f'strMeasure{i}']
+                if ingrediente:
+                    ingredientes += f"- {medida} {ingrediente}\n"
+                else:
+                    break
+                
+            embed = discord.Embed(title=f"🍲 {titulo}", description=f"**Ingredientes:**\n{ingredientes}", color=discord.Color.yellow())
+            embed.add_field(name="Modo de Preparo", value=instrucoes[:1024], inline=False)
+            embed.set_image(url=imagem)
+
+            await interaction.followup.send(embed=embed)
+
+        except (requests.RequestException, TypeError, KeyError):
+            await interaction.followup.send("❌ Não consegui encontrar essa receita ou houve um erro.")
+
+
+
 
 async def setup(client):
     await client.add_cog(Utilidades(client))

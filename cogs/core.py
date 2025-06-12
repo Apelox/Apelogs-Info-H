@@ -57,7 +57,8 @@ class Core(commands.Cog):
                 "`/ping` - Mostra a latência do bot.\n"
                 "`/help` - Mostra esta mensagem de ajuda.\n"
                 "`/tempo <cidade>` – Mostra o clima atual de uma cidade.\n"
-                "`/filme <nome>` – Mostra informações de um filme/série"
+                "`/filme <nome>` – Mostra informações de um filme/série\n"
+                "`/ia <mensagem>` – Converse diretamente com a IA Apelogs."
             ),
             inline=False
         )

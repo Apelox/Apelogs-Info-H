@@ -7,3 +7,6 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 COMMAND_PREFIX = "+"
 API_WEATHER=os.getenv('API_WEATHER')
 API_FILME=os.getenv('API_FILME')
+API_GEMINI=os.getenv('API_GEMINI')
+TERMINAL_ID=os.getenv('terminal_channel_id')
+TARGET_ID=os.getenv('target_user_id')

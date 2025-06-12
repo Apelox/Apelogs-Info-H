@@ -3,3 +3,6 @@ python-dotenv
 numexpr
 requests
 gtts
+PyNaCl
+ffmpeg
+yt_dlp

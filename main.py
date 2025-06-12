@@ -30,17 +30,20 @@ async def on_ready():
         print(f"Slash commands sincronizados: {len(synced)}")
     except Exception as e:
         print(f"Erro ao sincronizar slash commands: {e}")
+    print("A uma ideia de Patrick Bateman, é uma espécie de abstração, mas eu não sou isso na realidade, isso é uma entidade... É ilusório, embora eu possa esconder meu olhar frio e apertando minha mão você sinta minha carne e até pense que temos o mesmo estilo de vida eu... simplesmente não existo.")
 
+    
 async def load_cogs():
     for filename in os.listdir("./cogs"):
         if filename.endswith(".py"):
             await client.load_extension(f"cogs.{filename[:-3]}")
             print(f"{filename[:-3]} iniciada.")
 
+            
 async def main():
     await load_cogs()
     await client.start(DISCORD_TOKEN)
-
+    
 
 
 

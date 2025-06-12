@@ -5,3 +5,6 @@ apelog.log
 \data/
 \.venv/
 __pycache__/
+cogs/dm.py
+cogs/midia.py
+cogs/tts.py

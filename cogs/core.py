@@ -41,39 +41,87 @@ class Core(commands.Cog):
     ######
 
     #help
-    @discord.app_commands.command(name="help", description="Mostra os comandos de Apelogs.")
+    @discord.app_commands.command(name="help", description="Mostra todos os comandos disponíveis do Apelogs.")
     async def slash_help(self, interaction: discord.Interaction):
         await interaction.response.defer(thinking=True)
+        
         embed = discord.Embed(
             title="📚 Comandos do Apelogs",
-            description="Aqui estão todos os comandos disponíveis:",
+            description=f"Aqui está a lista de tudo que eu posso fazer. \nMeu prefixo para comandos de música é `{self.client.command_prefix}`.",
             color=discord.Color.blurple()
         )
-        
-        # 🛠 Utilidades
+        embed.set_thumbnail(url=self.client.user.display_avatar.url)
+
+        # 🛠️ Comandos Principais e de Utilidade
         embed.add_field(
-            name="🛠 Utilidades",
+            name="🛠️ Utilidades",
             value=(
-                "`/ping` - Mostra a latência do bot.\n"
+                "`/ping` - Verifica a latência do bot.\n"
                 "`/help` - Mostra esta mensagem de ajuda.\n"
-                "`/tempo <cidade>` – Mostra o clima atual de uma cidade.\n"
-                "`/filme <nome>` – Mostra informações de um filme/série\n"
-                "`/ia <mensagem>` – Converse diretamente com a IA Apelogs."
+                "`/clima <cidade>` – Mostra o clima de uma cidade.\n"
+                "`/filme <título>` – Busca informações de um filme/série.\n"
+                "`/receita [prato]` – Busca uma receita (aleatória ou específica)."
+            ),
+            inline=False
+        )
+        
+        # 💰 Comandos de Economia
+        embed.add_field(
+            name="💰 Economia",
+            value=(
+                "`/saldo [usuário]` - Mostra o saldo de um usuário.\n"
+                "`/daily` - Coleta sua recompensa diária.\n"
+                "`/trabalhar` - Faz um trabalho para ganhar dinheiro.\n"
+                "`/rank` - Exibe o ranking dos mais ricos.\n"
+                "`/pagar <usuário> <quantia>` - Transfere dinheiro.\n"
+                "`/jackpot` - Mostra o prêmio atual da máquina de caça-níquel.\n"
+                "`/slot [aposta]` - Joga na máquina de caça-níquel."
             ),
             inline=False
         )
 
-        # 🐾 Animais
+        # 🧠 Inteligência Artificial
         embed.add_field(
-            name="🐾 Animais",
+            name="🧠 Inteligência Artificial",
             value=(
-                "`/cat` – Envia uma imagem de um gato aleatório.\n"
-                "`/dog`, `/fox`, `/panda`, `/redpanda`, `/guaxinim`, `/coala`, `/canguru`, `/baleia`, `/bird` – Outros comandos de animais fofos."
+                "`/ia <pergunta>` – Converse diretamente comigo.\n"
+                "*Menção* - Me mencione em qualquer mensagem (`@Apelogs`) para uma resposta."
             ),
             inline=False
         )
+        
+        # 🎲 Comandos de Diversão
+        embed.add_field(
+            name="🎲 Diversão",
+            value=(
+                "`/biscoitinho` - Receba uma frase do biscoito da sorte.\n"
+                "`/apergunta <dúvida>` - Responde sua pergunta de sim/não."
+            ),
+            inline=False
+        )
+        
+        # 🎵 Comandos de Música
+        embed.add_field(
+            name=f"🎵 Música (use o prefixo `{self.client.command_prefix}`)",
+            value=(
+                "`play <música>` - Toca ou adiciona uma música à fila.\n"
+                "`pause` / `resume` - Pausa ou retoma a música.\n"
+                "`skip` - Pula para a próxima música.\n"
+                "`stop` - Para a música e limpa a fila.\n"
+                "`queue` - Mostra a fila de músicas.\n"
+                "`clearq` - Limpa a fila de músicas."
+            ),
+            inline=False
+        )
+
+        # 🐾 Comandos de Animais
+        embed.add_field(
+            name="🐾 Animais",
+            value="`/dog`, `/cat`, `/fox`, `/panda`, `/redpanda`, `/guaxinim`, `/coala`, `/canguru`, `/baleia`, `/bird`.",
+            inline=False
+        )
  
-        await interaction.followup.send(embed=embed) 
+        await interaction.followup.send(embed=embed)
 
 async def setup(client):
     await client.add_cog(Core(client))

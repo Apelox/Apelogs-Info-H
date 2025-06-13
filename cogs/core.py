@@ -11,7 +11,6 @@ class Core(commands.Cog):
 
     @discord.app_commands.command(name="ping", description="Veja se o bot está online e a latência.")
     async def slash_ping(self, interaction: discord.Interaction):
-        await interaction.response.defer(thinking=True)
         before = time.monotonic()
         await interaction.response.defer()
         after = time.monotonic()

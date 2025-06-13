@@ -87,8 +87,12 @@ class Economia(commands.Cog):
                 return
 
         ganhos = random.randint(50, 200)
-        trabalhos = ["entregador de pizza", "lavador de pratos", "passeador de cães", "testador de colchões", "garoto de programa", "stripper"]
-        
+        with open("data/trabalhos.txt", "r", encoding="utf-8") as f:
+            trabalhos = f.read().splitlines()
+        if not trabalhos:
+            await interaction.followup.send("Meu oráculo está silencioso... O arquivo de trabalhos está vazio.")
+            return
+
         self.manager.add_balance(user_id, ganhos)
         self.manager.update_cooldown(user_id, "work")
         

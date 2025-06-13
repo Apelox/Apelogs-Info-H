@@ -13,12 +13,13 @@ class Economia(commands.Cog):
     @app_commands.describe(usuario="O usuário no qual você quer ver o saldo!")
     async def saldo(self, interaction: discord.Interaction, usuario: discord.Member = None):
         target_user = usuario or interaction.user
-        
-        balance = self.manager.get_balance(target_user.id)
+        user_data = self.manager.get_user_data(target_user.id)
+        saldo_mao = user_data.get("balance", 0)
+        saldo_banco = user_data.get("bank", 0)
         
         embed = discord.Embed(
             title=f"💰 Saldo de {target_user.display_name}",
-            description=f"Você possui **${balance:,}**.",
+            description=f"Possui **${saldo_mao:,}** em mãos\nE **${saldo_banco}** no banco!",
             color=discord.Color.green()
         )
         embed.set_thumbnail(url=target_user.display_avatar.url)
@@ -214,6 +215,224 @@ class Economia(commands.Cog):
 
         await interaction.edit_original_response(embed=embed)
     
+    
+    #PERFIL
+    @app_commands.command(name="perfil", description="Mostra seu perfil econômico e suas badges.")
+    @app_commands.describe(usuario="O usuário do qual você quer ver o perfil.")
+    async def perfil(self, interaction: discord.Interaction, usuario: discord.Member = None):
+        target_user = usuario or interaction.user
+        user_data = self.manager.get_user_data(target_user.id)
+        saldo_mao = user_data.get("balance", 0)
+        saldo_banco = user_data.get("bank", 0)
+        
+        biografia = user_data.get("biography", "Nenhuma biografia definida.")
+        badges = user_data.get("badges", [])
+        badges_str = " ".join(badges) if badges else "Nenhuma badge ainda."
+        
+
+        data_criacao = discord.utils.format_dt(target_user.created_at, style='f')
+        data_entrada = discord.utils.format_dt(target_user.joined_at, style='R')   
+
+
+        embed = discord.Embed()
+        embed.title=f"👤 Perfil de {target_user.display_name}"
+        embed.description=f"*{biografia}*"
+        embed.color=target_user.color
+        
+        
+        embed.set_thumbnail(url=target_user.display_avatar.url)
+
+        embed.add_field(name="💵 Em Mãos", value=f"${saldo_mao:,}", inline=True)
+        embed.add_field(name="🏦 No Banco", value=f"${saldo_banco:,}")
+        embed.add_field(name=":money_with_wings: Valor Investido", value=f"${user_data["investments"]["total_investido_acumulado"]}", inline=True)
+        
+        invest_level = self._get_nivel_investidor(user_data["investments"]["total_investido_acumulado"])
+        embed.add_field(name="📈 Nível de Investidor", value=invest_level, inline=False)
+                
+        embed.add_field(name="🏆 Badges", value=badges_str, inline=False)
+
+        embed.set_footer(text=f"ID do Usuário: {target_user.id}")
+        embed.add_field(name="🗓️ Conta Criada", value=data_criacao, inline=True)
+        embed.add_field(name="👋 Entrou no Servidor", value=data_entrada, inline=True)
+
+        await interaction.response.send_message(embed=embed)
+    
+    @app_commands.command(name="setbio", description="Define sua biografia para o comando /perfil.")
+    @app_commands.describe(texto="O texto da sua nova biografia (máximo 150 caracteres).")
+    async def setbio(self, interaction: discord.Interaction, texto: str):
+        if len(texto) > 150:
+            await interaction.response.send_message("❌ Sua biografia não pode ter mais de 150 caracteres.", ephemeral=True)
+            return
+
+        user_id = interaction.user.id
+        user_data = self.manager.get_user_data(user_id)
+        
+        user_data["biography"] = texto
+        self.manager.set_user_data(user_id, user_data)
+        
+        await interaction.response.send_message("✅ Sua biografia foi atualizada com sucesso!", ephemeral=True)
+    
+    #BANCO
+    @app_commands.command(name="depositar", description="Deposita dinheiro no banco para mantê-lo seguro.")
+    @app_commands.describe(quantia="A quantia a ser depositada.")
+    async def depositar(self, interaction: discord.Interaction, quantia: int):
+        user_id = interaction.user.id
+        
+        if quantia <= 0:
+            await interaction.response.send_message("A quantia deve ser positiva!", ephemeral=True)
+            return
+
+        user_data = self.manager.get_user_data(user_id)
+        saldo_mao = user_data.get("balance", 0)
+
+        if saldo_mao < quantia:
+            await interaction.response.send_message(f"Você não tem dinheiro suficiente! Seu saldo em mãos é de ${saldo_mao:,}.", ephemeral=True)
+            return
+
+        user_data["balance"] -= quantia
+        user_data["bank"] += quantia
+        self.manager.set_user_data(user_id, user_data)
+        
+        await interaction.response.send_message(f"✅ Você depositou **${quantia:,}** no banco.")
+
+    @app_commands.command(name="sacar", description="Saca dinheiro do banco.")
+    @app_commands.describe(quantia="A quantia a ser sacada.")
+    async def sacar(self, interaction: discord.Interaction, quantia: int):
+        user_id = interaction.user.id
+
+        if quantia <= 0:
+            await interaction.response.send_message("A quantia deve ser positiva!", ephemeral=True)
+            return
+
+        user_data = self.manager.get_user_data(user_id)
+        saldo_banco = user_data.get("bank", 0)
+
+        if saldo_banco < quantia:
+            await interaction.response.send_message(f"Você não tem saldo suficiente no banco! Seu saldo no banco é de ${saldo_banco:,}.", ephemeral=True)
+            return
+        
+        user_data["balance"] += quantia
+        user_data["bank"] -= quantia
+        self.manager.set_user_data(user_id, user_data)
+
+        await interaction.response.send_message(f"✅ Você sacou **${quantia:,}** do banco.")
+    
+    
+    @app_commands.command(name="carteira", description="Mostra sua carteira de investimentos no Fundo Alox.")
+    async def carteira(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        preco_cota_atual = await self._atualizar_mercado()
+        
+        user_data = self.manager.get_user_data(interaction.user.id)
+        cotas = user_data["investments"]["cotas"]
+        valor_total = cotas * preco_cota_atual
+
+        embed = discord.Embed(
+            title=f"💼 Carteira de {interaction.user.display_name}",
+            color=discord.Color.dark_green()
+        )
+        embed.add_field(name="Cotas do Fundo", value=f"{cotas:.4f}", inline=True)
+        embed.add_field(name="Preço Atual por Cota", value=f"${preco_cota_atual:,.2f}", inline=True)
+        embed.add_field(name="Valor Total da Carteira", value=f"${valor_total:,.2f}", inline=False)
+        embed.set_footer(text="Use /investir para comprar mais cotas ou /resgatar para vender.")
+
+        await interaction.followup.send(embed=embed)
+
+    @app_commands.command(name="investir", description="Investe seu dinheiro do banco no Fundo Alox.")
+    @app_commands.describe(quantia="A quantia em dinheiro que você deseja investir.")
+    async def investir(self, interaction: discord.Interaction, quantia: int):
+        await interaction.response.defer()
+        if quantia <= 0:
+            await interaction.followup.send("A quantia para investir deve ser positiva!", ephemeral=True)
+            return
+
+        user_id = interaction.user.id
+        user_data = self.manager.get_user_data(user_id)
+        saldo_banco = user_data["bank"]
+
+        if saldo_banco < quantia:
+            await interaction.followup.send(f"Você não tem saldo suficiente no banco! Seu saldo é de ${saldo_banco:,}.", ephemeral=True)
+            return
+
+        preco_cota_atual = await self._atualizar_mercado()
+        cotas_compradas = quantia / preco_cota_atual
+        user_data["bank"] -= quantia
+        user_data["investments"]["cotas"] += cotas_compradas
+        user_data["investments"]["total_investido_acumulado"] += quantia
+        
+        self.manager.set_user_data(user_id, user_data)
+
+        embed = discord.Embed(
+            title="📈 Investimento Realizado!",
+            description=f"Você investiu **${quantia:,}** e comprou **{cotas_compradas:.4f}** cotas do Fundo Alox.",
+            color=discord.Color.green()
+        )
+        await interaction.followup.send(embed=embed)
+
+    @app_commands.command(name="resgatar", description="Vende suas cotas do Fundo Alox e recebe o dinheiro no banco.")
+    @app_commands.describe(cotas="O número de cotas que você deseja vender.")
+    async def resgatar(self, interaction: discord.Interaction, cotas: float):
+        await interaction.response.defer()
+        if cotas <= 0:
+            await interaction.followup.send("O número de cotas para resgatar deve ser positivo!", ephemeral=True)
+            return
+
+        user_id = interaction.user.id
+        user_data = self.manager.get_user_data(user_id)
+        cotas_usuario = user_data["investments"]["cotas"]
+
+        if cotas_usuario < cotas:
+            await interaction.followup.send(f"Você não tem cotas suficientes! Você possui {cotas_usuario:.4f} cotas.", ephemeral=True)
+            return
+            
+        preco_cota_atual = await self._atualizar_mercado()
+        valor_resgatado = cotas * preco_cota_atual
+        user_data["bank"] += valor_resgatado
+        user_data["investments"]["cotas"] -= cotas
+        self.manager.set_user_data(user_id, user_data)
+        
+        embed = discord.Embed(
+            title="💰 Resgate Realizado!",
+            description=f"Você vendeu **{cotas:.4f}** cotas e resgatou **${valor_resgatado:,.2f}** para seu banco.",
+            color=discord.Color.blue()
+        )
+        await interaction.followup.send(embed=embed)
+
+    async def _atualizar_mercado(self):
+        data = self.manager.load_data()
+        invest_data = data["global"]["investimento"]
+        
+        preco_atual = invest_data["preco_por_cota"]
+        ultima_att_str = invest_data["ultima_atualizacao"]
+        ultima_att = datetime.fromisoformat(ultima_att_str)
+        
+        agora = datetime.now(timezone.utc)
+        horas_passadas = int((agora - ultima_att).total_seconds() / 3600)
+
+        if horas_passadas > 0:
+            for _ in range(horas_passadas):
+                preco_atual *= random.uniform(0.97, 1.05)
+            
+            data["global"]["investimento"]["preco_por_cota"] = preco_atual
+            data["global"]["investimento"]["ultima_atualizacao"] = (ultima_att + timedelta(hours=horas_passadas)).isoformat()
+            self.manager.save_data(data)
+        
+        return data["global"]["investimento"]["preco_por_cota"]
+
+    def _get_nivel_investidor(self, total_investido):
+        if 1 <= total_investido <= 999:
+            return "Investidor Iniciante 🥉"
+        elif 1000 <= total_investido <= 4999:
+            return "Especulador Astuto 🥈"
+        elif 5000 <= total_investido <= 24999:
+            return "Lobo de Wall Street 🥇"
+        elif 25000 <= total_investido <= 99999:
+            return "Barão do Mercado 💎"
+        elif total_investido >= 100000:
+            return "Lenda Financeira 👑"
+        else:
+            return "Nenhum"        
+        
     
 async def setup(client):
     await client.add_cog(Economia(client))

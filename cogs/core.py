@@ -65,16 +65,39 @@ class Core(commands.Cog):
             inline=False
         )
         
-        # 💰 Comandos de Economia
+        # 💰 Comandos de Economia e Perfil
         embed.add_field(
-            name="💰 Economia",
+            name="💰 Economia e Perfil",
             value=(
-                "`/saldo [usuário]` - Mostra o saldo de um usuário.\n"
+                "`/saldo [usuário]` - Mostra seu saldo em mãos e no banco.\n"
+                "`/perfil [usuário]` - Exibe o perfil completo do usuário.\n"
+                "`/setbio <texto>` - Define sua biografia personalizada.\n"
                 "`/daily` - Coleta sua recompensa diária.\n"
                 "`/trabalhar` - Faz um trabalho para ganhar dinheiro.\n"
                 "`/rank` - Exibe o ranking dos mais ricos.\n"
-                "`/pagar <usuário> <quantia>` - Transfere dinheiro.\n"
-                "`/jackpot` - Mostra o prêmio atual da máquina de caça-níquel.\n"
+                "`/pagar <usuário> <quantia>` - Transfere dinheiro para outros."
+            ),
+            inline=False
+        )
+        
+        # 🏦 Comandos de Banco e Investimentos
+        embed.add_field(
+            name="🏦 Banco e Investimentos",
+            value=(
+                "`/depositar <quantia>` - Guarda dinheiro no banco.\n"
+                "`/sacar <quantia>` - Retira dinheiro do banco.\n"
+                "`/investir <quantia>` - Compra cotas do Fundo Alox.\n"
+                "`/resgatar <cotas>` - Vende suas cotas do Fundo.\n"
+                "`/carteira` - Mostra seus investimentos atuais."
+            ),
+            inline=False
+        )
+
+        # 🎰 Jogos
+        embed.add_field(
+            name="🎰 Jogos de Azar",
+            value=(
+                "`/jackpot` - Mostra o prêmio atual da máquina.\n"
                 "`/slot [aposta]` - Joga na máquina de caça-níquel."
             ),
             inline=False

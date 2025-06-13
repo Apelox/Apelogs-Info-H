@@ -3,6 +3,7 @@ from discord import app_commands
 from utils.economia_manager import Manager
 import discord, random, asyncio
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 class Economia(commands.Cog):
     def __init__(self, client):
@@ -16,10 +17,10 @@ class Economia(commands.Cog):
         user_data = self.manager.get_user_data(target_user.id)
         saldo_mao = user_data.get("balance", 0)
         saldo_banco = user_data.get("bank", 0)
-        
+        saldo_investido = user_data.get
         embed = discord.Embed(
             title=f"💰 Saldo de {target_user.display_name}",
-            description=f"Possui **${saldo_mao:,}** em mãos\nE **${saldo_banco}** no banco!",
+            description=f"Possui **${saldo_mao:,}** em mãos\n**${saldo_banco:,}** no banco\nE ${user_data["investments"]["total_investido_acumulado"]:,} investidos!",
             color=discord.Color.green()
         )
         embed.set_thumbnail(url=target_user.display_avatar.url)
@@ -248,7 +249,7 @@ class Economia(commands.Cog):
 
         embed.add_field(name="💵 Em Mãos", value=f"${saldo_mao:,}", inline=True)
         embed.add_field(name="🏦 No Banco", value=f"${saldo_banco:,}")
-        embed.add_field(name=":money_with_wings: Valor Investido", value=f"${user_data["investments"]["total_investido_acumulado"]}", inline=True)
+        embed.add_field(name=":money_with_wings: Valor Investido", value=f"${user_data["investments"]["total_investido_acumulado"]:,}", inline=True)
         
         invest_level = self._get_nivel_investidor(user_data["investments"]["total_investido_acumulado"])
         embed.add_field(name="📈 Nível de Investidor", value=invest_level, inline=False)
@@ -336,8 +337,8 @@ class Economia(commands.Cog):
             color=discord.Color.dark_green()
         )
         embed.add_field(name="Cotas do Fundo", value=f"{cotas:.4f}", inline=True)
-        embed.add_field(name="Preço Atual por Cota", value=f"${preco_cota_atual:,.2f}", inline=True)
-        embed.add_field(name="Valor Total da Carteira", value=f"${valor_total:,.2f}", inline=False)
+        embed.add_field(name="Preço Atual por Cota", value=f"${preco_cota_atual:,.0f}", inline=True)
+        embed.add_field(name="Valor Total da Carteira", value=f"${valor_total:,.0f}", inline=False)
         embed.set_footer(text="Use /investir para comprar mais cotas ou /resgatar para vender.")
 
         await interaction.followup.send(embed=embed)
@@ -402,6 +403,74 @@ class Economia(commands.Cog):
         )
         await interaction.followup.send(embed=embed)
 
+    @app_commands.command(name="banco", description="Mostra estatísticas globais do Fundo Alox e do banco.")
+    async def banco(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        preco_cota_atual = await self._atualizar_mercado()
+        
+        data = self.manager.load_data()
+        users_data = data.get("users", {})
+        invest_data = data.get("global", {}).get("investimento", {})
+
+        valor_total_banco = sum(user.get("bank", 0) for user in users_data.values())
+        total_cotas_compradas = sum(user.get("investments", {}).get("cotas", 0) for user in users_data.values())
+        
+        preco_cota_atual = invest_data.get("preco_por_cota", 0)
+        valor_total_investido = total_cotas_compradas * preco_cota_atual
+        
+        historico_precos = invest_data.get("preco_cota_historico", [])
+        
+        embed = discord.Embed(
+            title="🏦 Estatísticas Gerais do Banco Alox",
+            description="Visão geral da economia do servidor.",
+            color=discord.Color.dark_blue()
+        )
+        
+        embed.add_field(
+            name="💰 Ativos no Banco",
+            value=f"**${valor_total_banco:,.2f}**",
+            inline=True
+        )
+        embed.add_field(
+            name="📈 Ativos Investidos",
+            value=f"**${valor_total_investido:,.2f}**",
+            inline=True
+        )
+        embed.add_field(
+            name="📄 Total de Cotas",
+            value=f"**{total_cotas_compradas:,.4f}** cotas no mercado",
+            inline=False
+        )
+        
+        if historico_precos:
+            ultimos_registros = historico_precos[-5:]
+            ultimos_registros.reverse()
+            
+            texto_historico = ""
+            fuso_horario_br = ZoneInfo("America/Sao_Paulo")
+            
+            for registro in ultimos_registros:
+                data_utc = datetime.fromisoformat(registro["data"])
+                data_br = data_utc.astimezone(fuso_horario_br)
+                texto_historico += f"`{data_br.strftime('%d/%m %Hh')}` - **${registro['preco']:,.2f}**\n"
+                
+            embed.add_field(
+                name="📊 Histórico Recente do Preço da Cota",
+                value=texto_historico,
+                inline=False
+            )
+        else:
+            embed.add_field(
+                name="📊 Histórico Recente do Preço da Cota",
+                value="Nenhum histórico disponível ainda.",
+                inline=False
+            )
+        
+        embed.set_footer(text=f"Preço atual da cota: ${preco_cota_atual:,.2f}")
+        
+        await interaction.followup.send(embed=embed)
+
+
     async def _atualizar_mercado(self):
         data = self.manager.load_data()
         invest_data = data["global"]["investimento"]
@@ -414,8 +483,12 @@ class Economia(commands.Cog):
         horas_passadas = int((agora - ultima_att).total_seconds() / 3600)
 
         if horas_passadas > 0:
+            historico = invest_data.get("preco_cota_historico", [])
             for _ in range(horas_passadas):
                 preco_atual *= random.uniform(0.97, 1.05)
+                historico.append({"data": (ultima_att + timedelta(hours=_+1)).isoformat(), "preco": preco_atual})
+
+            invest_data["preco_cota_historico"] = historico[-30:]
             
             data["global"]["investimento"]["preco_por_cota"] = preco_atual
             data["global"]["investimento"]["ultima_atualizacao"] = (ultima_att + timedelta(hours=horas_passadas)).isoformat()

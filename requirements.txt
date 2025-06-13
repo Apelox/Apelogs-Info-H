@@ -6,3 +6,5 @@ gtts
 PyNaCl
 ffmpeg
 yt_dlp
+google-generativeai
+tzdata

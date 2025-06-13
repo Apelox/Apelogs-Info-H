@@ -12,7 +12,8 @@ class Manager:
                     "jackpot": 1000,
                     "investimento": {
                         "preco_por_cota": 100.0,
-                        "ultima_atualizacao": datetime.now(timezone.utc).isoformat()
+                        "ultima_atualizacao": datetime.now(timezone.utc).isoformat(),
+                        "preco_cota_historico": []
                     }
                 },
                 "users": {}
@@ -24,10 +25,12 @@ class Manager:
         with open(self.path, 'r', encoding='utf-8') as f:
             try:
                 data = json.load(f)
-                data.setdefault('global', {}).setdefault('investimento', {
+                investimento_global = data.setdefault('global', {}).setdefault('investimento', {
                     "preco_por_cota": 100.0,
-                    "ultima_atualizacao": datetime.now(timezone.utc).isoformat()
+                    "ultima_atualizacao": datetime.now(timezone.utc).isoformat(),
+                    "preco_cota_historico": []
                 })
+                investimento_global.setdefault('preco_cota_historico', [])
                 data.setdefault('users', {})
                 return data
             except json.JSONDecodeError:

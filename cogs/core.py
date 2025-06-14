@@ -1,4 +1,5 @@
 from discord.ext import commands
+from discord import app_commands
 import discord
 import time
 import logging
@@ -68,7 +69,7 @@ class Core(commands.Cog):
         embed.add_field(
             name="💰 Economia e Perfil",
             value=(
-                "`/saldo [usuário]` - Mostra seu saldo em mãos e no banco.\n"
+                "`/saldo [usuário]` - Mostra seu saldo em maõs, no banco e na carteira!\n"
                 "`/perfil [usuário]` - Exibe o perfil completo do usuário.\n"
                 "`/setbio <texto>` - Define sua biografia personalizada.\n"
                 "`/daily` - Coleta sua recompensa diária.\n"

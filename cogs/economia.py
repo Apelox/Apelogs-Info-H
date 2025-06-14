@@ -14,13 +14,17 @@ class Economia(commands.Cog):
     @app_commands.describe(usuario="O usuário no qual você quer ver o saldo!")
     async def saldo(self, interaction: discord.Interaction, usuario: discord.Member = None):
         target_user = usuario or interaction.user
+        preco_cota_atual = await self._atualizar_mercado()
         user_data = self.manager.get_user_data(target_user.id)
+        cotas = user_data["investments"]["cotas"]
+        valor_total = cotas * preco_cota_atual
+        
         saldo_mao = user_data.get("balance", 0)
         saldo_banco = user_data.get("bank", 0)
-        saldo_investido = user_data.get
+        
         embed = discord.Embed(
             title=f"💰 Saldo de {target_user.display_name}",
-            description=f"Possui **${saldo_mao:,}** em mãos\n**${saldo_banco:,}** no banco\nE ${user_data["investments"]["total_investido_acumulado"]:,} investidos!",
+            description=f"Possui **${saldo_mao:,}** em mãos\n**${saldo_banco:,}** no banco\nE $**{valor_total:,.0f}** na carteira!",
             color=discord.Color.green()
         )
         embed.set_thumbnail(url=target_user.display_avatar.url)
@@ -225,10 +229,21 @@ class Economia(commands.Cog):
     @app_commands.command(name="perfil", description="Mostra seu perfil econômico e suas badges.")
     @app_commands.describe(usuario="O usuário do qual você quer ver o perfil.")
     async def perfil(self, interaction: discord.Interaction, usuario: discord.Member = None):
+        preco_cota_atual = await self._atualizar_mercado()
         target_user = usuario or interaction.user
         user_data = self.manager.get_user_data(target_user.id)
         saldo_mao = user_data.get("balance", 0)
         saldo_banco = user_data.get("bank", 0)
+        valor_investido = user_data["investments"]["total_investido_acumulado"]
+        cotas = user_data["investments"]["cotas"]
+        valor_total = cotas * preco_cota_atual
+        lucro_prejuizo = valor_total - valor_investido
+        
+        if lucro_prejuizo >= 0:
+            lucro_str = f"```diff\n+ ${lucro_prejuizo:,.2f}\n```"
+        else:
+            lucro_str = f"```diff\n- ${abs(lucro_prejuizo):,.2f}\n```"
+        
         
         biografia = user_data.get("biography", "Nenhuma biografia definida.")
         badges = user_data.get("badges", [])
@@ -247,12 +262,12 @@ class Economia(commands.Cog):
         
         embed.set_thumbnail(url=target_user.display_avatar.url)
 
-        embed.add_field(name="💵 Em Mãos", value=f"${saldo_mao:,}", inline=True)
-        embed.add_field(name="🏦 No Banco", value=f"${saldo_banco:,}")
-        embed.add_field(name=":money_with_wings: Valor Investido", value=f"${user_data["investments"]["total_investido_acumulado"]:,}", inline=True)
-        
+        embed.add_field(name="💵 Em Mãos", value=f"```${saldo_mao:,}```", inline=True)
+        embed.add_field(name="🏦 No Banco", value=f"```${saldo_banco:,}```")
+        embed.add_field(name="💼 Na Carteira", value=f"```${valor_total:,.0f}```")
         invest_level = self._get_nivel_investidor(user_data["investments"]["total_investido_acumulado"])
         embed.add_field(name="📈 Nível de Investidor", value=invest_level, inline=False)
+        embed.add_field(name="📈 Investimentos", value=lucro_str, inline=True)
                 
         embed.add_field(name="🏆 Badges", value=badges_str, inline=False)
 
@@ -502,7 +517,7 @@ class Economia(commands.Cog):
         elif 1000 <= total_investido <= 4999:
             return "Especulador Astuto 🥈"
         elif 5000 <= total_investido <= 24999:
-            return "Lobo de Wall Street 🥇"
+            return "Rei das Finanças🥇"
         elif 25000 <= total_investido <= 99999:
             return "Barão do Mercado 💎"
         elif total_investido >= 100000:

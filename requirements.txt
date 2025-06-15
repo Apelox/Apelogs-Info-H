@@ -8,3 +8,4 @@ ffmpeg
 yt_dlp
 google-generativeai
 tzdata
+google-genai

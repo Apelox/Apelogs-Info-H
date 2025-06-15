@@ -1,12 +1,13 @@
 from discord.ext import commands
+from discord import app_commands
 import discord, requests, random
 
 class Diversao(commands.Cog):
     def __init__(self, client):
         self.client = client
         
-    @discord.app_commands.command(name="biscoitinho", description="Receba uma frase inspiradora (ou não) do nosso biscoito da sorte!")
-    async def biscoito_da_sorte(self, interaction: discord.Interaction):
+    @app_commands.command(name="biscoitinho", description="Receba uma frase inspiradora (ou não) do nosso biscoito da sorte!")
+    async def biscoitinho(self, interaction: discord.Interaction):
         await interaction.response.defer()
         with open("data/frases.txt", "r", encoding="utf-8") as f:
                 frases = f.read().splitlines()
@@ -20,11 +21,10 @@ class Diversao(commands.Cog):
             description=f"**Sua sorte de hoje é:**\n\n> {escolha}",
             color=discord.Color.random()
         )
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
 
-    @discord.app_commands.command(name="apergunta", description="Faça uma pergunta de sim ou não e o oráculo responderá!")
+    @app_commands.command(name="apergunta", description="Faça uma pergunta de sim ou não e o oráculo responderá!")
     async def apergunta(self, interaction: discord.Interaction, duvida: str):
-
         await interaction.response.defer()
         with open("data/respostas.txt", "r", encoding="utf-8") as f:
                 respostas = f.read().splitlines()

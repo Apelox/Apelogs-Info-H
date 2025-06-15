@@ -24,7 +24,7 @@ class Economia(commands.Cog):
         
         embed = discord.Embed(
             title=f"💰 Saldo de {target_user.display_name}",
-            description=f"Possui **${saldo_mao:,}** em mãos\n**${saldo_banco:,}** no banco\nE $**{valor_total:,.0f}** na carteira!",
+            description=f"Possui **${saldo_mao:,.0f}** em mãos\n**${saldo_banco:,.0f}** no banco\nE $**{valor_total:,.0f}** na carteira!",
             color=discord.Color.green()
         )
         embed.set_thumbnail(url=target_user.display_avatar.url)
@@ -136,24 +136,47 @@ class Economia(commands.Cog):
     @app_commands.command(name="rank", description="Mostra os usuários mais ricos do servidor.")
     async def rank(self, interaction: discord.Interaction):
         await interaction.response.defer()
+        preco_cota_atual = await self._atualizar_mercado()
         data = self.manager.load_data()
         server_members = {str(member.id) for member in interaction.guild.members}
-        server_data = {uid: udata.get("balance", 0) for uid, udata in data["users"].items() if uid in server_members}
-        sorted_users = sorted(server_data.items(), key=lambda item: item[1], reverse=True)
+
+        server_data = {}
+        for uid, udata in data["users"].items():
+            if uid in server_members:
+                saldo_mao = udata.get("balance", 0)
+                saldo_banco = udata.get("bank", 0)
+                cotas = udata.get("investments", {}).get("cotas", 0)
+                valor_carteira = cotas * preco_cota_atual
+                riqueza_total = saldo_mao + saldo_banco + valor_carteira
+                
+                server_data[uid] = {
+                    "total": riqueza_total,
+                    "mao": saldo_mao,
+                    "banco": saldo_banco,
+                    "carteira": valor_carteira
+                }
+
+        sorted_users = sorted(server_data.items(), key=lambda item: item[1]['total'], reverse=True)
+        
         embed = discord.Embed(title="🏆 Ranking dos Pobrinhos", color=discord.Color.gold())
         
         description = ""
-        for i, (user_id, balance) in enumerate(sorted_users[:10]):
+        for i, (user_id, wealth_data) in enumerate(sorted_users[:10]):
             user = self.client.get_user(int(user_id))
             if user:
-                description += f"**{i+1}.** {user.mention} - **${balance:,}**\n"
-        
+                total_str = f"${wealth_data['total']:,.0f}"
+                mao_str = f"${wealth_data['mao']:,.0f}"
+                banco_str = f"${wealth_data['banco']:,.0f}"
+                carteira_str = f"${wealth_data['carteira']:,.0f}"
+
+                description += f"**{i+1}. {user.mention} - Total: {total_str}**\n"
+                description += f"└ Em mãos: {mao_str} | Banco: {banco_str} | Carteira: {carteira_str}\n\n"
+
         if not description:
             description = "Ninguém no ranking ainda. Use `/daily` para começar!"
             
         embed.description = description
         await interaction.followup.send(embed=embed)
-
         
     #JACKPOTTTTTTTTTTTTTT
     @app_commands.command(name="jackpot", description="Mostra o valor atual do prêmio acumulado no /slot.")
@@ -263,7 +286,7 @@ class Economia(commands.Cog):
         embed.set_thumbnail(url=target_user.display_avatar.url)
 
         embed.add_field(name="💵 Em Mãos", value=f"```${saldo_mao:,}```", inline=True)
-        embed.add_field(name="🏦 No Banco", value=f"```${saldo_banco:,}```")
+        embed.add_field(name="🏦 No Banco", value=f"```${saldo_banco:,.0f}```")
         embed.add_field(name="💼 Na Carteira", value=f"```${valor_total:,.0f}```")
         invest_level = self._get_nivel_investidor(user_data["investments"]["total_investido_acumulado"])
         embed.add_field(name="📈 Nível de Investidor", value=invest_level, inline=False)
@@ -524,6 +547,50 @@ class Economia(commands.Cog):
             return "Lenda Financeira 👑"
         else:
             return "Nenhum"        
+        
+    #BADGES
+    @app_commands.command(name="badges", description="Mostra todas as badges conhecidas e como obtê-las.")
+    async def badges(self, interaction: discord.Interaction):
+        embed = discord.Embed(
+            title="🏆 Guia de Badges do Apelogs",
+            description="Aqui estão todas as badges que você pode exibir no seu perfil! Use os comandos e explore o bot para colecionar todas.",
+            color=discord.Color.gold()
+        )
+        embed.set_thumbnail(url=self.client.user.display_avatar.url)
+        embed.add_field(
+            name="🥇 Conquista Única",
+            value="""**🤑 Primeiro Milionário**
+                   *Descrição: Concedida ao primeiro jogador do servidor que acumulou $1.000.000).*
+                   **Como obter:** Esta badge é histórica e foi concedida apenas uma vez. Não pode mais ser obtida.""",
+            inline=False
+        )
+        embed.add_field(
+            name="🎯 Badges de Conquista",
+            value="""**💰 Milionário**
+                   *Descrição: Para aqueles que alcançaram o status de milionário.*
+                   **Como obter:** Acumule um total de $1.000.000.""",
+            inline=False
+        )
+        embed.add_field(
+            name="🛍️ Badges da Loja (Em Breve)",
+            value="""**💎Dinheiro** & **👑 Elite **
+                   *Descrição: Símbolos de puro status e poder econômico para os mais ricos.*
+                   **Como obter:** Ficarão disponíveis para compra na futura `/loja` do bot por um preço extremamente alto.""",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="❓ Badges Ocultas",
+            value="""*Descrição: Existem diversas badges secretas que recompensam a curiosidade, a exploração e até mesmo o azar!*
+                   **Como obter:** O mistério é parte da diversão! Elas são desbloqueadas através de ações específicas e inesperadas...""",
+            inline=False
+        )
+        embed.set_footer(text="Suas badges conquistadas aparecem no comando /perfil.")
+        
+        await interaction.response.send_message(embed=embed)
+        
+        
+        
         
     
 async def setup(client):

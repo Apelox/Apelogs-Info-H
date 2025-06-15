@@ -66,13 +66,17 @@ class HigherLowerView(discord.ui.View):
             embed = self.cog_jogos.create_higher_lower_embed(game, f"Você acertou! A nova carta é {formatar_carta(nova_carta)}.")
             await interaction.response.edit_message(embed=embed, view=self)
         else:
-            motivo = f"Você perdeu! A carta era {formatar_carta(nova_carta)}."
             if nova_carta["valor"] == carta_anterior["valor"]:
-                motivo = f"Empate! A carta era {formatar_carta(nova_carta)}. A casa vence."
-            
-            embed = self.cog_jogos.create_higher_lower_embed(game, motivo, game_over=True)
-            await interaction.response.edit_message(embed=embed)
-            await self.handle_game_end(interaction)
+                motivo = f"⚖️ EMPATE! O jogo continua com a carta: {formatar_carta(nova_carta)}."
+                embed = self.cog_jogos.create_higher_lower_embed(game, motivo, game_over=False) 
+                await interaction.response.edit_message(embed=embed, view=self)
+            else:
+                self.cog_jogos.manager.update_jackpot(game['initial_bet'])
+                motivo = f"Você perdeu! A carta era {formatar_carta(nova_carta)}."
+                
+                embed = self.cog_jogos.create_higher_lower_embed(game, motivo, game_over=True)
+                await interaction.response.edit_message(embed=embed)
+                await self.handle_game_end(interaction)
 
     @discord.ui.button(label="🔼 Maior", style=discord.ButtonStyle.success)
     async def higher_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -101,7 +105,7 @@ class Jogos(commands.Cog):
         self.manager = Manager()
         self.active_duels = {}
         self.active_higher_lower = {}
-        self.payout_multipliers = {1: 1.2, 2: 1.5, 3: 2.0, 4: 2.5, 5: 3.5}
+        self.payout_multipliers = {1: 1.2, 2: 1.5, 3: 2, 4: 3, 5: 5}
 
     def get_payout(self, game_state):
         multiplier = self.payout_multipliers.get(game_state["streak"], 0)
@@ -124,8 +128,13 @@ class Jogos(commands.Cog):
     @app_commands.describe(aposta="O valor que você quer apostar. Mínimo = 50!")
     async def elevador(self, interaction: discord.Interaction, aposta: int):
         APOSTA_MINIMA = 50
+        APOSTA_MAXIMA = 20000
         if aposta < APOSTA_MINIMA:
             return await interaction.response.send_message(f"A aposta mínima é de **${APOSTA_MINIMA}**.", ephemeral=True)
+
+        if aposta > APOSTA_MAXIMA:
+            return await interaction.response.send_message(f"A aposta máxima é de **${APOSTA_MAXIMA}**.", ephemeral=True)
+
 
         user_balance = self.manager.get_balance(interaction.user.id)
         if user_balance < aposta:

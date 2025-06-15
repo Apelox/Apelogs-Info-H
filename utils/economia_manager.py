@@ -116,7 +116,7 @@ class Manager:
     def update_jackpot(self, amount):
         data = self.load_data()
         current_jackpot = self.get_jackpot()
-        jackpot_cap = 20000 
+        jackpot_cap = 100000 
         
         if current_jackpot < jackpot_cap:
             data.setdefault("global", {})["jackpot"] = min(current_jackpot + amount, jackpot_cap)

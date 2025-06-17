@@ -4,11 +4,16 @@ from utils.economia_manager import Manager
 import discord, random, asyncio
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
+import locale
 
 class Economia(commands.Cog):
     def __init__(self, client):
         self.client = client
         self.manager = Manager()
+        try:
+            locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
+        except locale.Error:
+            locale.setlocale(locale.LC_ALL, 'Portuguese_Brazil.1252')
         
     @app_commands.command(name="saldo", description="Mostra seu saldo ou o de outro usuário.")
     @app_commands.describe(usuario="O usuário no qual você quer ver o saldo!")
@@ -22,9 +27,13 @@ class Economia(commands.Cog):
         saldo_mao = user_data.get("balance", 0)
         saldo_banco = user_data.get("bank", 0)
         
+        saldo_mao_str = locale.format_string('%.2f', saldo_mao, grouping=True)
+        saldo_banco_str = locale.format_string('%.2f', saldo_banco, grouping=True)
+        valor_total_str = locale.format_string('%.2f', valor_total, grouping=True)
+
         embed = discord.Embed(
             title=f"💰 Saldo de {target_user.display_name}",
-            description=f"Possui **${saldo_mao:,.0f}** em mãos\n**${saldo_banco:,.0f}** no banco\nE $**{valor_total:,.0f}** na carteira!",
+            description=f"Possui **R$ {saldo_mao_str}** em mãos\n**R$ {saldo_banco_str}** no banco\nE **R$ {valor_total_str}** na carteira!",
             color=discord.Color.green()
         )
         embed.set_thumbnail(url=target_user.display_avatar.url)
@@ -60,9 +69,10 @@ class Economia(commands.Cog):
         self.manager.add_balance(user_id, recompensa)
         self.manager.update_cooldown(user_id, "daily")
         
+        recompensa_str = locale.format_string('%.2f', recompensa, grouping=True)
         embed = discord.Embed(
             title="🎉 Recompensa Diária",
-            description=f"Você coletou sua recompensa diária e ganhou **${recompensa:,}**!",
+            description=f"Você coletou sua recompensa diária e ganhou **R$ {recompensa_str}**!",
             color=discord.Color.gold()
         )
         await interaction.response.send_message(embed=embed)
@@ -101,9 +111,10 @@ class Economia(commands.Cog):
         self.manager.add_balance(user_id, ganhos)
         self.manager.update_cooldown(user_id, "work")
         
+        ganhos_str = locale.format_string('%.2f', ganhos, grouping=True)
         embed = discord.Embed(
             title="💼 Dia de Trabalho",
-            description=f"Você trabalhou como **{random.choice(trabalhos)}** e ganhou **${ganhos:,}**!",
+            description=f"Você trabalhou como **{random.choice(trabalhos)}** e ganhou **R$ {ganhos_str}**!",
             color=discord.Color.blue()
         )
         await interaction.response.send_message(embed=embed)
@@ -121,13 +132,16 @@ class Economia(commands.Cog):
             return
         saldo_remetente = self.manager.get_balance(remetente_id)
         if saldo_remetente < quantia:
-            await interaction.response.send_message(f"Você não tem dinheiro suficiente! Seu saldo é de ${saldo_remetente:,}.", ephemeral=True)
+            saldo_remetente_str = locale.format_string('%.2f', saldo_remetente, grouping=True)
+            await interaction.response.send_message(f"Você não tem dinheiro suficiente! Seu saldo é de R$ {saldo_remetente_str}.", ephemeral=True)
             return
         self.manager.add_balance(remetente_id, -quantia)
         self.manager.add_balance(destinatario_id, quantia)
+        
+        quantia_str = locale.format_string('%.2f', quantia, grouping=True)
         embed = discord.Embed(
             title="💸 Transferência Realizada",
-            description=f"{interaction.user.mention} transferiu **${quantia:,}** para {destinatario.mention}.",
+            description=f"{interaction.user.mention} transferiu **R$ {quantia_str}** para {destinatario.mention}.",
             color=discord.Color.purple()
         )
         await interaction.response.send_message(embed=embed)
@@ -164,10 +178,10 @@ class Economia(commands.Cog):
         for i, (user_id, wealth_data) in enumerate(sorted_users[:10]):
             user = self.client.get_user(int(user_id))
             if user:
-                total_str = f"${wealth_data['total']:,.0f}"
-                mao_str = f"${wealth_data['mao']:,.0f}"
-                banco_str = f"${wealth_data['banco']:,.0f}"
-                carteira_str = f"${wealth_data['carteira']:,.0f}"
+                total_str = f"R$ {locale.format_string('%.2f', wealth_data['total'], grouping=True)}"
+                mao_str = f"R$ {locale.format_string('%.2f', wealth_data['mao'], grouping=True)}"
+                banco_str = f"R$ {locale.format_string('%.2f', wealth_data['banco'], grouping=True)}"
+                carteira_str = f"R$ {locale.format_string('%.2f', wealth_data['carteira'], grouping=True)}"
 
                 description += f"**{i+1}. {user.mention} - Total: {total_str}**\n"
                 description += f"└ Em mãos: {mao_str} | Banco: {banco_str} | Carteira: {carteira_str}\n\n"
@@ -182,9 +196,10 @@ class Economia(commands.Cog):
     @app_commands.command(name="jackpot", description="Mostra o valor atual do prêmio acumulado no /slot.")
     async def jackpot(self, interaction: discord.Interaction):
         valor_jackpot = self.manager.get_jackpot()
+        valor_jackpot_str = locale.format_string('%.2f', valor_jackpot, grouping=True)
         embed = discord.Embed(
             title="💎 Jackpot Atual",
-            description=f"O prêmio acumulado para quem tirar a sorte grande é de **${valor_jackpot:,}**!",
+            description=f"O prêmio acumulado para quem tirar a sorte grande é de **R$ {valor_jackpot_str}**!",
             color=discord.Color.dark_gold()
         )
         await interaction.response.send_message(embed=embed)
@@ -195,12 +210,13 @@ class Economia(commands.Cog):
         user_id = interaction.user.id
 
         if aposta < 50:
-            await interaction.response.send_message("A aposta mínima é de **$50**.", ephemeral=True)
+            await interaction.response.send_message("A aposta mínima é de **R$ 50,00**.", ephemeral=True)
             return
 
         saldo_atual = self.manager.get_balance(user_id)
         if saldo_atual < aposta:
-            await interaction.response.send_message(f"Você não tem saldo suficiente para apostar **${aposta:,}**.", ephemeral=True)
+            aposta_str = locale.format_string('%.2f', aposta, grouping=True)
+            await interaction.response.send_message(f"Você não tem saldo suficiente para apostar **R$ {aposta_str}**.", ephemeral=True)
             return
 
         self.manager.add_balance(user_id, -aposta)
@@ -224,17 +240,19 @@ class Economia(commands.Cog):
             self.manager.add_balance(user_id, premio)
             self.manager.set_jackpot(1000)
             
+            premio_str = locale.format_string('%.2f', premio, grouping=True)
             embed.title = "🎉 **JACKPOT!** 🎉"
             embed.color = discord.Color.gold()
-            embed.add_field(name="Parabéns!", value=f"Você tirou a sorte grande e ganhou **${premio:,}**!")
+            embed.add_field(name="Parabéns!", value=f"Você tirou a sorte grande e ganhou **R$ {premio_str}**!")
 
         elif resultado[0] == resultado[1] or resultado[1] == resultado[2] or resultado[0] == resultado[2]:
             premio = aposta * 2
             self.manager.add_balance(user_id, premio)
-
+            
+            premio_str = locale.format_string('%.2f', premio, grouping=True)
             embed.title = "✨ **Quase lá!** ✨"
             embed.color = discord.Color.green()
-            embed.add_field(name="Boa!", value=f"Você conseguiu um par e ganhou **${premio:,}**!")
+            embed.add_field(name="Boa!", value=f"Você conseguiu um par e ganhou **R$ {premio_str}**!")
 
         else:
             contribuicao_jackpot = int(aposta * 0.80)
@@ -243,7 +261,8 @@ class Economia(commands.Cog):
             embed.title = "😕 **Não foi desta vez...** 😕"
             embed.color = discord.Color.red()
             valor_jackpot = self.manager.get_jackpot()
-            embed.add_field(name="Que pena!", value=f"Mais sorte da próxima vez. O prêmio do jackpot aumentou! O valor total é de **${valor_jackpot:,}**!")
+            valor_jackpot_str = locale.format_string('%.2f', valor_jackpot, grouping=True)
+            embed.add_field(name="Que pena!", value=f"Mais sorte da próxima vez. O prêmio do jackpot aumentou! O valor total é de **R$ {valor_jackpot_str}**!")
 
         await interaction.edit_original_response(embed=embed)
     
@@ -262,10 +281,11 @@ class Economia(commands.Cog):
         valor_total = cotas * preco_cota_atual
         lucro_prejuizo = valor_total - valor_investido
         
+        lucro_prejuizo_str = locale.format_string('%.2f', abs(lucro_prejuizo), grouping=True)
         if lucro_prejuizo >= 0:
-            lucro_str = f"```diff\n+ ${lucro_prejuizo:,.2f}\n```"
+            lucro_str = f"```diff\n+ R$ {lucro_prejuizo_str}\n```"
         else:
-            lucro_str = f"```diff\n- ${abs(lucro_prejuizo):,.2f}\n```"
+            lucro_str = f"```diff\n- R$ {lucro_prejuizo_str}\n```"
         
         
         biografia = user_data.get("biography", "Nenhuma biografia definida.")
@@ -275,7 +295,10 @@ class Economia(commands.Cog):
 
         data_criacao = discord.utils.format_dt(target_user.created_at, style='f')
         data_entrada = discord.utils.format_dt(target_user.joined_at, style='R')   
-
+        
+        saldo_mao_str = locale.format_string('%.2f', saldo_mao, grouping=True)
+        saldo_banco_str = locale.format_string('%.2f', saldo_banco, grouping=True)
+        valor_total_str = locale.format_string('%.2f', valor_total, grouping=True)
 
         embed = discord.Embed()
         embed.title=f"👤 Perfil de {target_user.display_name}"
@@ -285,9 +308,9 @@ class Economia(commands.Cog):
         
         embed.set_thumbnail(url=target_user.display_avatar.url)
 
-        embed.add_field(name="💵 Em Mãos", value=f"```${saldo_mao:,}```", inline=True)
-        embed.add_field(name="🏦 No Banco", value=f"```${saldo_banco:,.0f}```")
-        embed.add_field(name="💼 Na Carteira", value=f"```${valor_total:,.0f}```")
+        embed.add_field(name="💵 Em Mãos", value=f"```R$ {saldo_mao_str}```", inline=True)
+        embed.add_field(name="🏦 No Banco", value=f"```R$ {saldo_banco_str}```")
+        embed.add_field(name="💼 Na Carteira", value=f"```R$ {valor_total_str}```")
         invest_level = self._get_nivel_investidor(user_data["investments"]["total_investido_acumulado"])
         embed.add_field(name="📈 Nível de Investidor", value=invest_level, inline=False)
         embed.add_field(name="📈 Investimentos", value=lucro_str, inline=True)
@@ -329,14 +352,16 @@ class Economia(commands.Cog):
         saldo_mao = user_data.get("balance", 0)
 
         if saldo_mao < quantia:
-            await interaction.response.send_message(f"Você não tem dinheiro suficiente! Seu saldo em mãos é de ${saldo_mao:,}.", ephemeral=True)
+            saldo_mao_str = locale.format_string('%.2f', saldo_mao, grouping=True)
+            await interaction.response.send_message(f"Você não tem dinheiro suficiente! Seu saldo em mãos é de R$ {saldo_mao_str}.", ephemeral=True)
             return
 
         user_data["balance"] -= quantia
         user_data["bank"] += quantia
         self.manager.set_user_data(user_id, user_data)
         
-        await interaction.response.send_message(f"✅ Você depositou **${quantia:,}** no banco.")
+        quantia_str = locale.format_string('%.2f', quantia, grouping=True)
+        await interaction.response.send_message(f"✅ Você depositou **R$ {quantia_str}** no banco.")
 
     @app_commands.command(name="sacar", description="Saca dinheiro do banco.")
     @app_commands.describe(quantia="A quantia a ser sacada.")
@@ -351,14 +376,16 @@ class Economia(commands.Cog):
         saldo_banco = user_data.get("bank", 0)
 
         if saldo_banco < quantia:
-            await interaction.response.send_message(f"Você não tem saldo suficiente no banco! Seu saldo no banco é de ${saldo_banco:,}.", ephemeral=True)
+            saldo_banco_str = locale.format_string('%.2f', saldo_banco, grouping=True)
+            await interaction.response.send_message(f"Você não tem saldo suficiente no banco! Seu saldo no banco é de R$ {saldo_banco_str}.", ephemeral=True)
             return
         
         user_data["balance"] += quantia
         user_data["bank"] -= quantia
         self.manager.set_user_data(user_id, user_data)
 
-        await interaction.response.send_message(f"✅ Você sacou **${quantia:,}** do banco.")
+        quantia_str = locale.format_string('%.2f', quantia, grouping=True)
+        await interaction.response.send_message(f"✅ Você sacou **R$ {quantia_str}** do banco.")
     
     
     @app_commands.command(name="carteira", description="Mostra sua carteira de investimentos no Fundo Alox.")
@@ -369,14 +396,17 @@ class Economia(commands.Cog):
         user_data = self.manager.get_user_data(interaction.user.id)
         cotas = user_data["investments"]["cotas"]
         valor_total = cotas * preco_cota_atual
+        
+        preco_cota_atual_str = locale.format_string('%.2f', preco_cota_atual, grouping=True)
+        valor_total_str = locale.format_string('%.2f', valor_total, grouping=True)
 
         embed = discord.Embed(
             title=f"💼 Carteira de {interaction.user.display_name}",
             color=discord.Color.dark_green()
         )
         embed.add_field(name="Cotas do Fundo", value=f"{cotas:.4f}", inline=True)
-        embed.add_field(name="Preço Atual por Cota", value=f"${preco_cota_atual:,.0f}", inline=True)
-        embed.add_field(name="Valor Total da Carteira", value=f"${valor_total:,.0f}", inline=False)
+        embed.add_field(name="Preço Atual por Cota", value=f"R$ {preco_cota_atual_str}", inline=True)
+        embed.add_field(name="Valor Total da Carteira", value=f"R$ {valor_total_str}", inline=False)
         embed.set_footer(text="Use /investir para comprar mais cotas ou /resgatar para vender.")
 
         await interaction.followup.send(embed=embed)
@@ -394,7 +424,8 @@ class Economia(commands.Cog):
         saldo_banco = user_data["bank"]
 
         if saldo_banco < quantia:
-            await interaction.followup.send(f"Você não tem saldo suficiente no banco! Seu saldo é de ${saldo_banco:,}.", ephemeral=True)
+            saldo_banco_str = locale.format_string('%.2f', saldo_banco, grouping=True)
+            await interaction.followup.send(f"Você não tem saldo suficiente no banco! Seu saldo é de R$ {saldo_banco_str}.", ephemeral=True)
             return
 
         preco_cota_atual = await self._atualizar_mercado()
@@ -405,9 +436,10 @@ class Economia(commands.Cog):
         
         self.manager.set_user_data(user_id, user_data)
 
+        quantia_str = locale.format_string('%.2f', quantia, grouping=True)
         embed = discord.Embed(
             title="📈 Investimento Realizado!",
-            description=f"Você investiu **${quantia:,}** e comprou **{cotas_compradas:.4f}** cotas do Fundo Alox.",
+            description=f"Você investiu **R$ {quantia_str}** e comprou **{cotas_compradas:.4f}** cotas do Fundo Alox.",
             color=discord.Color.green()
         )
         await interaction.followup.send(embed=embed)
@@ -427,16 +459,30 @@ class Economia(commands.Cog):
         if cotas_usuario < cotas:
             await interaction.followup.send(f"Você não tem cotas suficientes! Você possui {cotas_usuario:.4f} cotas.", ephemeral=True)
             return
-            
+        
+        if cotas_usuario > 0:
+            igualdade = cotas / cotas_usuario
+            valorsaque = user_data["investments"]["total_investido_acumulado"] * igualdade
+            user_data["investments"]["total_investido_acumulado"] -= valorsaque
+
+            if user_data["investments"]["total_investido_acumulado"] < 0:
+                user_data["investments"]["total_investido_acumulado"] = 0
+    
+    
         preco_cota_atual = await self._atualizar_mercado()
         valor_resgatado = cotas * preco_cota_atual
         user_data["bank"] += valor_resgatado
         user_data["investments"]["cotas"] -= cotas
+        
+        if user_data["investments"]["cotas"] < 1e-9: 
+            user_data["investments"]["total_investido_acumulado"] = 0
+        
         self.manager.set_user_data(user_id, user_data)
         
+        valor_resgatado_str = locale.format_string('%.2f', valor_resgatado, grouping=True)
         embed = discord.Embed(
             title="💰 Resgate Realizado!",
-            description=f"Você vendeu **{cotas:.4f}** cotas e resgatou **${valor_resgatado:,.2f}** para seu banco.",
+            description=f"Você vendeu **{cotas:.4f}** cotas e resgatou **R$ {valor_resgatado_str}** para seu banco.",
             color=discord.Color.blue()
         )
         await interaction.followup.send(embed=embed)
@@ -444,7 +490,6 @@ class Economia(commands.Cog):
     @app_commands.command(name="banco", description="Mostra estatísticas globais do Fundo Alox e do banco.")
     async def banco(self, interaction: discord.Interaction):
         await interaction.response.defer()
-        preco_cota_atual = await self._atualizar_mercado()
         
         data = self.manager.load_data()
         users_data = data.get("users", {})
@@ -453,11 +498,15 @@ class Economia(commands.Cog):
         valor_total_banco = sum(user.get("bank", 0) for user in users_data.values())
         total_cotas_compradas = sum(user.get("investments", {}).get("cotas", 0) for user in users_data.values())
         
-        preco_cota_atual = invest_data.get("preco_por_cota", 0)
+        preco_cota_atual = await self._atualizar_mercado()
         valor_total_investido = total_cotas_compradas * preco_cota_atual
         
         historico_precos = invest_data.get("preco_cota_historico", [])
         
+        valor_total_banco_str = locale.format_string('%.2f', valor_total_banco, grouping=True)
+        valor_total_investido_str = locale.format_string('%.2f', valor_total_investido, grouping=True)
+        preco_cota_atual_str = locale.format_string('%.2f', preco_cota_atual, grouping=True)
+
         embed = discord.Embed(
             title="🏦 Estatísticas Gerais do Banco Alox",
             description="Visão geral da economia do servidor.",
@@ -466,12 +515,12 @@ class Economia(commands.Cog):
         
         embed.add_field(
             name="💰 Ativos no Banco",
-            value=f"**${valor_total_banco:,.2f}**",
+            value=f"**R$ {valor_total_banco_str}**",
             inline=True
         )
         embed.add_field(
             name="📈 Ativos Investidos",
-            value=f"**${valor_total_investido:,.2f}**",
+            value=f"**R$ {valor_total_investido_str}**",
             inline=True
         )
         embed.add_field(
@@ -490,7 +539,8 @@ class Economia(commands.Cog):
             for registro in ultimos_registros:
                 data_utc = datetime.fromisoformat(registro["data"])
                 data_br = data_utc.astimezone(fuso_horario_br)
-                texto_historico += f"`{data_br.strftime('%d/%m %Hh')}` - **${registro['preco']:,.2f}**\n"
+                preco_str = locale.format_string('%.2f', registro['preco'], grouping=True)
+                texto_historico += f"`{data_br.strftime('%d/%m %Hh')}` - **R$ {preco_str}**\n"
                 
             embed.add_field(
                 name="📊 Histórico Recente do Preço da Cota",
@@ -504,7 +554,7 @@ class Economia(commands.Cog):
                 inline=False
             )
         
-        embed.set_footer(text=f"Preço atual da cota: ${preco_cota_atual:,.2f}")
+        embed.set_footer(text=f"Preço atual da cota: R$ {preco_cota_atual_str}")
         
         await interaction.followup.send(embed=embed)
 
@@ -522,9 +572,10 @@ class Economia(commands.Cog):
 
         if horas_passadas > 0:
             historico = invest_data.get("preco_cota_historico", [])
-            for _ in range(horas_passadas):
+            for h in range(horas_passadas):
                 preco_atual *= random.uniform(0.97, 1.05)
-                historico.append({"data": (ultima_att + timedelta(hours=_+1)).isoformat(), "preco": preco_atual})
+                nova_data = (ultima_att + timedelta(hours=h+1)).isoformat()
+                historico.append({"data": nova_data, "preco": preco_atual})
 
             invest_data["preco_cota_historico"] = historico[-30:]
             
@@ -560,7 +611,7 @@ class Economia(commands.Cog):
         embed.add_field(
             name="🥇 Conquista Única",
             value="""**🤑 Primeiro Milionário**
-                   *Descrição: Concedida ao primeiro jogador do servidor que acumulou $1.000.000).*
+                   *Descrição: Concedida ao primeiro jogador do servidor que acumulou R$ 1.000.000,00).*
                    **Como obter:** Esta badge é histórica e foi concedida apenas uma vez. Não pode mais ser obtida.""",
             inline=False
         )
@@ -568,7 +619,7 @@ class Economia(commands.Cog):
             name="🎯 Badges de Conquista",
             value="""**💰 Milionário**
                    *Descrição: Para aqueles que alcançaram o status de milionário.*
-                   **Como obter:** Acumule um total de $1.000.000.""",
+                   **Como obter:** Acumule um total de R$ 1.000.000,00.""",
             inline=False
         )
         embed.add_field(
@@ -589,9 +640,5 @@ class Economia(commands.Cog):
         
         await interaction.response.send_message(embed=embed)
         
-        
-        
-        
-    
 async def setup(client):
     await client.add_cog(Economia(client))

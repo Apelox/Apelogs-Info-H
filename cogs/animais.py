@@ -51,5 +51,11 @@ class Animais(commands.Cog):
         else:
             await interaction.followup.send(f"❌ Desculpe, não consegui encontrar uma imagem de **{animal_name}** no momento.")
 
+
+
+
+
+
+
 async def setup(client):
     await client.add_cog(Animais(client))

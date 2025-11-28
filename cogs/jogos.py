@@ -1,5 +1,6 @@
 import discord
 import random
+import re
 from discord.ext import commands
 from discord import app_commands
 from utils.economia_manager import Manager
@@ -128,7 +129,7 @@ class Jogos(commands.Cog):
     @app_commands.describe(aposta="O valor que você quer apostar. Mínimo = 50!")
     async def elevador(self, interaction: discord.Interaction, aposta: int):
         APOSTA_MINIMA = 50
-        APOSTA_MAXIMA = 20000
+        APOSTA_MAXIMA = 200000000000000000
         if aposta < APOSTA_MINIMA:
             return await interaction.response.send_message(f"A aposta mínima é de **${APOSTA_MINIMA}**.", ephemeral=True)
 
@@ -161,5 +162,59 @@ class Jogos(commands.Cog):
         
         await interaction.response.send_message(embed=embed, view=view)
 
+
+    @app_commands.command(name="roll", description="Rola um ou mais dados no formato XdY+Z (ex: 2d6, d20+5).")
+    @app_commands.describe(dados="A rolagem de dados que você quer fazer (ex: '2d6+3').")
+    async def roll(self, interaction: discord.Interaction, dados: str):
+        padrao = re.compile(r"(\d+)?d(\d+)([+-]\d+)?", re.IGNORECASE)
+        match = padrao.fullmatch(dados.strip())
+
+        if not match:
+            await interaction.response.send_message(
+                "❌ **Formato inválido!** Use a notação `XdY+Z`.\n"
+                "Exemplos:\n"
+                "`d20` (rola 1 dado de 20 lados)\n"
+                "`2d6` (rola 2 dados de 6 lados)\n"
+                "`1d8+4` (rola 1 dado de 8 lados e soma 4)\n"
+                "`3d10-2` (rola 3 dados de 10 lados e subtrai 2)",
+                ephemeral=True
+            )
+            return
+
+        num_dados_str, num_lados_str, modificador_str = match.groups()
+        num_dados = int(num_dados_str) if num_dados_str else 1
+        num_lados = int(num_lados_str)
+        modificador = int(modificador_str) if modificador_str else 0
+
+        if not (1 <= num_dados <= 100):
+            await interaction.response.send_message("❌ Você só pode rolar de 1 a 100 dados de uma vez.", ephemeral=True)
+            return
+        if not (1 <= num_lados <= 1000):
+            await interaction.response.send_message("❌ O dado pode ter de 1 a 1000 lados.", ephemeral=True)
+            return
+
+        resultados = [random.randint(1, num_lados) for _ in range(num_dados)]
+        soma_dados = sum(resultados)
+        total_final = soma_dados + modificador
+
+        resultados_str = ", ".join(map(str, resultados))
+        
+        embed = discord.Embed(
+            title=f"🎲 Rolagem de Dados: `{dados}`",
+            color=discord.Color.dark_purple()
+        )
+        
+        descricao = f"**Resultados:** `[{resultados_str}]`\n"
+        if modificador > 0:
+            descricao += f"**Soma:** {soma_dados} + {modificador} = **{total_final}**"
+        elif modificador < 0:
+            descricao += f"**Soma:** {soma_dados} - {abs(modificador)} = **{total_final}**"
+        else:
+            descricao += f"**Total:** **{total_final}**"
+            
+        embed.description = descricao
+        embed.set_footer(text=f"Rolado por {interaction.user.display_name}")
+
+        await interaction.response.send_message(embed=embed)
 async def setup(client):
     await client.add_cog(Jogos(client))

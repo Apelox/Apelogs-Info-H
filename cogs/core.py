@@ -5,6 +5,11 @@ import time
 import logging
 import asyncio
 logger = logging.getLogger('apelog')
+BANNED_GIF_URLS = [
+    "https://tenor.com/view/drewdrop-emoji-thirsty-gif-17627221520808670319",
+    "https://tenor.com/pt-BR/view/53-gif-21821120",
+    "https://tenor.com/view/emoji-gif-9541042"
+]
 
 class Core(commands.Cog):
     def __init__(self, client):
@@ -102,16 +107,6 @@ class Core(commands.Cog):
             ),
             inline=False
         )
-
-        # 🧠 Inteligência Artificial
-        embed.add_field(
-            name="🧠 Inteligência Artificial",
-            value=(
-                "`/ia <pergunta>` – Converse diretamente comigo.\n"
-                "*Menção* - Me mencione em qualquer mensagem (`@Apelogs`) para uma resposta."
-            ),
-            inline=False
-        )
         
         # 🎲 Comandos de Diversão
         embed.add_field(
@@ -119,6 +114,29 @@ class Core(commands.Cog):
             value=(
                 "`/biscoitinho` - Receba uma frase do biscoito da sorte.\n"
                 "`/apergunta <dúvida>` - Responde sua pergunta de sim/não."
+            ),
+            inline=False
+        )
+        
+        # NOVA SEÇÃO PARA MÍDIAS E CLIPES
+        embed.add_field(
+            name="🎬 Mídias e Clipes",
+            value=(
+                "`/clipe aleatorio [id]` - Envia um clipe da fila (ou um específico pelo ID).\n"
+                "`/clipe adicionar <nome>` - Adiciona uma nova mídia (via anexo ou link).\n"
+                "`/clipe lista` - Mostra a lista de todas as mídias do servidor.\n"
+                "`/clipe remover <id>` - Remove uma mídia usando o ID dela.\n"
+                "`/clipe reset` - Reinicia a fila de clipes para visualização."
+            ),
+            inline=False
+        )
+        
+        # 🧠 Inteligência Artificial
+        embed.add_field(
+            name="🧠 Inteligência Artificial",
+            value=(
+                "`/ia <pergunta>` – Converse diretamente comigo.\n"
+                "*Menção* - Me mencione em qualquer mensagem (`@Apelogs`) para uma resposta."
             ),
             inline=False
         )
@@ -140,11 +158,30 @@ class Core(commands.Cog):
         # 🐾 Comandos de Animais
         embed.add_field(
             name="🐾 Animais",
-            value="`/dog`, `/cat`, `/fox`, `/panda`, `/redpanda`, `/guaxinim`, `/coala`, `/canguru`, `/baleia`, `/bird`.",
+            value="`/animal` - Use este comando para ver a lista de animais disponíveis.",
             inline=False
         )
  
         await interaction.followup.send(embed=embed)
+
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if message.author.bot:
+            return
+        for banned_url in BANNED_GIF_URLS:
+            if banned_url in message.content:
+                try:
+                    await message.delete()
+                    await message.channel.send(f"Opa, {message.author.mention}! ESSE GIF ESTÁ BANIDO.")
+                except discord.Forbidden:
+                    print(f"Permissão negada para apagar a mensagem de {message.author} no canal {message.channel}.")
+                except Exception as e:
+                    print(f"Ocorreu um erro ao tentar apagar o GIF: {e}")
+                return
+
+
+
 
 async def setup(client):
     await client.add_cog(Core(client))

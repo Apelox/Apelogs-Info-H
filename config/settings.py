@@ -8,3 +8,9 @@ COMMAND_PREFIX = "+"
 API_WEATHER=os.getenv('API_WEATHER')
 API_FILME=os.getenv('API_FILME')
 API_GEMINI=os.getenv('API_GEMINI')
+DB_CONFIG = {
+    'host': os.getenv("DB_HOST"),
+    'user': os.getenv("DB_USER"),
+    'password': os.getenv("DB_PASS"),
+    'database': os.getenv("DB_NAME")
+}
